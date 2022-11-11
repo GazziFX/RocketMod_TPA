@@ -6,7 +6,7 @@ using SDG.Unturned;
 using Steamworks;
 using System;
 using System.Collections.Generic;
-using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace RocketMod_TPA
@@ -262,45 +262,39 @@ namespace RocketMod_TPA
             #endregion
 
         }
-        
-        private void DelayTP(UnturnedPlayer player, UnturnedPlayer teleporter, int delay)
+
+        private async void DelayTP(UnturnedPlayer player, UnturnedPlayer teleporter, int delay)
         {
-            new Thread((ThreadStart)(() =>
+            UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_accepted_2", player.CharacterName, delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
+            UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("Delay", delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
+            UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_accepted_3", teleporter.CharacterName, delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
+
+            if (this.health.ContainsKey(teleporter.CSteamID))
+                this.health[teleporter.CSteamID] = teleporter.Health;
+            else
+                this.health.Add(teleporter.CSteamID, teleporter.Health);
+
+            await Task.Delay(delay * 1000);
+
+            if (PluginTPA.Instance.Configuration.Instance.CancelOnBleeding && teleporter.Bleeding)
             {
-                UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_accepted_2", player.CharacterName, delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
-                UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("Delay", delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
-                UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_accepted_3", teleporter.CharacterName, delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
-
-                if (this.health.ContainsKey(teleporter.CSteamID))
-                    this.health[teleporter.CSteamID] = teleporter.Health;
-                else
-                    this.health.Add(teleporter.CSteamID, teleporter.Health);
-
-                Thread.Sleep(delay * 1000);
-
-                if (PluginTPA.Instance.Configuration.Instance.CancelOnBleeding && teleporter.Bleeding)
-                {
-                    UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_bleeding"), Color.red);
-                    requests.Remove(player.CSteamID);
-                }
-                else if (PluginTPA.Instance.Configuration.Instance.CancelOnHurt && health.ContainsKey(teleporter.CSteamID) && health[teleporter.CSteamID] > teleporter.Health)
-                {
-                    UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_hurt"), Color.red);
-                    requests.Remove(player.CSteamID);
-                    this.health.Remove(teleporter.CSteamID);
-                }
-                else
-                {
-                    UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_success"), Color.yellow);
-                    //teleporter.Teleport(player);
-                    TPplayer(teleporter, player);
-                    requests.Remove(player.CSteamID);
-                    this.health.Remove(teleporter.CSteamID);
-                }
-            }))
+                UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_bleeding"), Color.red);
+                requests.Remove(player.CSteamID);
+            }
+            else if (PluginTPA.Instance.Configuration.Instance.CancelOnHurt && health.ContainsKey(teleporter.CSteamID) && health[teleporter.CSteamID] > teleporter.Health)
             {
-                IsBackground = true
-            }.Start();
+                UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_hurt"), Color.red);
+                requests.Remove(player.CSteamID);
+                this.health.Remove(teleporter.CSteamID);
+            }
+            else
+            {
+                UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_success"), Color.yellow);
+                //teleporter.Teleport(player);
+                TPplayer(teleporter, player);
+                requests.Remove(player.CSteamID);
+                this.health.Remove(teleporter.CSteamID);
+            }
         }
 
         private void TPplayer(UnturnedPlayer player, UnturnedPlayer target)
