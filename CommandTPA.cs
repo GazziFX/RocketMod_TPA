@@ -1,5 +1,4 @@
 ﻿using Rocket.API;
-using Rocket.Core.Plugins;
 using Rocket.Unturned.Chat;
 using Rocket.Unturned.Player;
 using SDG.Unturned;
@@ -18,72 +17,17 @@ namespace RocketMod_TPA
         private Dictionary<CSteamID, DateTime> coolDown = new Dictionary<CSteamID, DateTime>();
         private Dictionary<CSteamID, byte> health = new Dictionary<CSteamID, byte>();
 
-        public bool AllowFromConsole
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public List<string> Permissions => new List<string>() { "CommandTPA.tpa" };
 
-        public List<string> Permissions
-        {
-            get
-            {
-                return new List<string>()
-                {
-                    "CommandTPA.tpa"
-                };
-            }
-        }
+        public AllowedCaller AllowedCaller => AllowedCaller.Player;
 
-        public AllowedCaller AllowedCaller
-        {
-            get
-            {
-                return AllowedCaller.Player;
-            }
-        }
+        public string Name => "tpa";
 
-        public bool RunFromConsole
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public string Syntax => "tpa (player/accept/deny/ignore)";
 
-        public string Name
-        {
-            get
-            {
-                return "tpa";
-            }
-        }
+        public string Help => "Request a teleport to a player, accept or deny other requests.";
 
-        public string Syntax
-        {
-            get
-            {
-                return "tpa (player/accept/deny/ignore)";
-            }
-        }
-
-        public string Help
-        {
-            get
-            {
-                return "Request a teleport to a player, accept or deny other requests.";
-            }
-        }
-
-        public List<string> Aliases
-        {
-            get
-            {
-                return new List<string>();
-            }
-        }
+        public List<string> Aliases => new List<string>();
 
         #endregion
 
@@ -103,8 +47,8 @@ namespace RocketMod_TPA
             #endregion
 
             #region Accept
-
-            if (command[0].ToString().ToLower() == "accept" || command[0].ToString().ToLower() == "a" || command[0].ToString().ToLower() == "yes")
+            var arg = command[0].ToLower();
+            if (arg == "accept" || arg == "a" || arg == "yes")
             {
                 if (!player.HasPermission("tpa.accept") && !player.IsAdmin)
                 {
@@ -162,7 +106,7 @@ namespace RocketMod_TPA
 
             #region Deny
 
-            if (command[0].ToString() == "deny" || command[0].ToString().ToLower() == "d" || command[0].ToString().ToLower() == "no")
+            if (arg == "deny" || arg == "d" || arg == "no")
             {
                 if (requests.ContainsKey(player.CSteamID))
                 {
@@ -181,14 +125,14 @@ namespace RocketMod_TPA
 
             #region Abort
 
-            if (command[0].ToString() == "abort")
+            if (arg == "abort")
             {
                 bool flag = false;
-                foreach (Steamworks.CSteamID id in CommandTPA.requests.Keys)
+                foreach (CSteamID id in requests.Keys)
                 {
-                    if (CommandTPA.requests[id] == player.CSteamID)
+                    if (requests[id] == player.CSteamID)
                     {
-                        CommandTPA.requests.Remove(id);
+                        requests.Remove(id);
                         UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_abort"), Color.yellow);
                         flag = true;
                         break;
@@ -210,7 +154,7 @@ namespace RocketMod_TPA
                 return;
             }
 
-            UnturnedPlayer requestTo = UnturnedPlayer.FromName(command[0].ToString());
+            UnturnedPlayer requestTo = UnturnedPlayer.FromName(command[0]);
 
             if (requestTo == null)
             {
@@ -222,7 +166,7 @@ namespace RocketMod_TPA
             {
                 if (coolDown.ContainsKey(player.CSteamID))
                 {
-                    int timeLeft = Convert.ToInt32(System.Math.Abs((DateTime.Now - coolDown[player.CSteamID]).TotalSeconds));
+                    int timeLeft = Convert.ToInt32(Math.Abs((DateTime.Now - coolDown[player.CSteamID]).TotalSeconds));
                     if (timeLeft < PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds)
                     {
                         UnturnedChat.Say(caller, PluginTPA.Instance.Translate("error_cooldown", PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds), Color.red);
@@ -269,10 +213,10 @@ namespace RocketMod_TPA
             UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("Delay", delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
             UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_accepted_3", teleporter.CharacterName, delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
 
-            if (this.health.ContainsKey(teleporter.CSteamID))
-                this.health[teleporter.CSteamID] = teleporter.Health;
+            if (health.ContainsKey(teleporter.CSteamID))
+                health[teleporter.CSteamID] = teleporter.Health;
             else
-                this.health.Add(teleporter.CSteamID, teleporter.Health);
+                health.Add(teleporter.CSteamID, teleporter.Health);
 
             await Task.Delay(delay * 1000);
 
@@ -285,15 +229,14 @@ namespace RocketMod_TPA
             {
                 UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_hurt"), Color.red);
                 requests.Remove(player.CSteamID);
-                this.health.Remove(teleporter.CSteamID);
+                health.Remove(teleporter.CSteamID);
             }
             else
             {
                 UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_success"), Color.yellow);
-                //teleporter.Teleport(player);
                 TPplayer(teleporter, player);
                 requests.Remove(player.CSteamID);
-                this.health.Remove(teleporter.CSteamID);
+                health.Remove(teleporter.CSteamID);
             }
         }
 
@@ -304,14 +247,9 @@ namespace RocketMod_TPA
                 EffectManager.sendEffect((ushort)PluginTPA.Instance.Configuration.Instance.NinjaEffectID, 30, player.Position);
             }
             player.Teleport(target);
-            //if (PluginTPA.Instance.Configuration.Instance.TPADoubleTap)
-            //{
-            //    Thread.Sleep(PluginTPA.Instance.Configuration.Instance.DoubleTapDelaySeconds * 1000);
-            //    player.Teleport(target);
-            //}
         }
 
-        private bool CheckPlayer(Steamworks.CSteamID plr)
+        private bool CheckPlayer(CSteamID plr)
         {
             bool flag = false;
             foreach (SteamPlayer sp in Provider.clients)

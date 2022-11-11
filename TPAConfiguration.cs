@@ -1,5 +1,4 @@
 ﻿using Rocket.API;
-using Rocket.Core.Assets;
 
 namespace RocketMod_TPA
 {
@@ -10,16 +9,14 @@ namespace RocketMod_TPA
 
         public void LoadDefaults()
         {
-            this.TPACoolDown = false;
-            this.TPACoolDownSeconds = 20;
-            this.TPADelay = false;
-            this.TPADelaySeconds = 10;
-            this.CancelOnBleeding = false;
-            this.CancelOnHurt = false;
-            this.NinjaTP = false;
-            this.NinjaEffectID = 45;
-            //this.DoubleTapDelaySeconds = 1;
-            //this.TPADoubleTap = true;
+            TPACoolDown = false;
+            TPACoolDownSeconds = 20;
+            TPADelay = false;
+            TPADelaySeconds = 10;
+            CancelOnBleeding = false;
+            CancelOnHurt = false;
+            NinjaTP = false;
+            NinjaEffectID = 45;
         }
     }
 }
